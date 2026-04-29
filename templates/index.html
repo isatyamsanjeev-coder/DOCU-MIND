@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Document AI Chatbot</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #0d0d0d;
+      color: #fffbe7;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .highlight {
+      color: #ffd000;
+    }
+    .card {
+      background-color: #1a1a1a;
+      border: 1px solid #ffd00044;
+      box-shadow: 0 0 10px #ffd00044;
+    }
+    .btn {
+      background-color: #ffd000;
+      color: #1a1a1a;
+      font-weight: 700;
+      transition: background-color 0.3s ease;
+    }
+    .btn:hover {
+      background-color: #e6be00;
+    }
+    input, select, textarea {
+      background-color: #2c2c2c;
+      color: #fff;
+      border: 1px solid #ffd00044;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    /* New styles for file upload */
+    #upload-label {
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: #ffd000;
+      margin-bottom: 0.5rem;
+      display: block;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    #file-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    #file {
+      display: none; /* Hide native file input */
+    }
+
+    #custom-file-button {
+      background-color: #ffd000;
+      color: #1a1a1a;
+      padding: 0.5rem 1.25rem;
+      border-radius: 9999px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      box-shadow: 0 0 8px #ffd000aa;
+      user-select: none;
+    }
+
+    #custom-file-button:hover {
+      background-color: #e6be00;
+    }
+
+    #file-name {
+      color: #fff;
+      font-style: italic;
+      max-width: 60%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+  </style>
+</head>
+<body class="p-6">
+
+  <div class="max-w-3xl mx-auto">
+    <h1 class="text-4xl font-bold mb-4 highlight text-center">📄 Document AI Chatbot</h1>
+    <div class="card p-6 rounded-2xl mb-6">
+      <form id="upload-form">
+        <label id="upload-label" for="file">Upload a file:</label>
+        <div id="file-wrapper">
+          <label id="custom-file-button" for="file">Choose File</label>
+          <input type="file" name="file" id="file" required>
+          <span id="file-name">No file chosen</span>
+        </div>
+
+        <button type="submit" class="btn px-4 py-2 rounded w-full mt-6 font-bold">Upload and Process</button>
+      </form>
+    </div>
+
+    <div class="card p-6 rounded-2xl mb-6 hidden" id="qa-section">
+      <label class="block mb-2">Ask a question about the document:</label>
+      <textarea id="question" rows="3" class="p-2 w-full rounded mb-4" placeholder="Enter your question..."></textarea>
+      <button onclick="askQuestion()" class="btn px-4 py-2 rounded w-full font-bold">Ask</button>
+    </div>
+
+    <div class="card p-6 rounded-2xl" id="response-box" style="display:none;">
+      <h2 class="text-xl font-bold mb-2">💬 Response:</h2>
+      <p id="response-text" class="whitespace-pre-line"></p>
+    </div>
+  </div>
+
+  <script>
+    let currentFile = '';
+    let currentIndex = '';
+
+    const fileInput = document.getElementById('file');
+    const fileNameSpan = document.getElementById('file-name');
+
+    // Update file name display when file selected
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length > 0) {
+        fileNameSpan.textContent = fileInput.files[0].name;
+      } else {
+        fileNameSpan.textContent = 'No file chosen';
+      }
+    });
+
+    document.getElementById('upload-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      const res = await fetch('/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      if (data.error) {
+        alert('Error: ' + data.error);
+        return;
+      }
+
+      currentFile = data.filename;
+      currentIndex = data.index_path;
+
+      // Show QA section directly, no alert
+      document.getElementById('qa-section').classList.remove('hidden');
+
+      // Clear and disable file input and upload button to prevent re-upload
+      fileInput.value = '';
+      fileInput.disabled = true;
+      e.target.querySelector('button[type="submit"]').disabled = true;
+      fileNameSpan.textContent = 'File uploaded';
+    });
+
+    async function askQuestion() {
+      const question = document.getElementById('question').value.trim();
+
+      if (!question) {
+        alert('Please enter a question.');
+        return;
+      }
+
+      const res = await fetch('/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: question,
+          filename: currentFile,
+          index_path: currentIndex
+        })
+      });
+
+      const data = await res.json();
+      if (data.error) {
+        alert('Error: ' + data.error);
+        return;
+      }
+
+      document.getElementById('response-text').innerText = data.response;
+      document.getElementById('response-box').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
