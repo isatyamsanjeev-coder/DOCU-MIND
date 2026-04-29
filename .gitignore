@@ -1,0 +1,3 @@
+# Environment files (API keys, secrets)
+.env
+.env.local
